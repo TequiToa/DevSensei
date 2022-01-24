@@ -22,17 +22,22 @@ export const registerUser = async (req, res) => {
     //sécuriser les données
 
     //vérifié si user existe deja
-    const isUsernamefind = await userModel.findOne({
-      username: userData.username,
-    });
+    const [isUsernamefind, isMailfind] = await Promise.all([
+      userModel.findOne({
+        username: userData.username,
+      }),
+      userModel.findOne({ mail: userData.mail }),
+    ]);
 
-    const isMailfind = await userModel.findOne({ mail: userData.mail });
     if (isUsernamefind !== null || isMailfind !== null)
       throw new Error("Identifiant ou Mail déja utilisé");
+
     //hashage du mdp
     const mdp = hashage(userData.password, process.env.SALT);
+
     //user
     const newUser = { ...userData, password: mdp };
+
     //Ajout a la bdd
     const creation = await newUser.save();
 
@@ -55,14 +60,33 @@ export const loginUser = async (req, res) => {
   try {
     const { userData } = req.body;
 
-    res.status(201).json({
+    //sécuriser les données
+
+    //Chercher username ou mail
+    const userFound = await userModel.findOne({
+      username: userData.username,
+      mail: userData.mail,
+    });
+
+    if (!userFound) throw new Error("Utilisateur introuvable");
+
+    //Comparer Hash et mdp
+    if ((await compareHash(userData.password, userFound.password)) === false) {
+      throw new Error("Mot de passe incorrect");
+    }
+
+    //generer token
+
+    res.status(200).json({
       status: "Success",
+      auth: true,
     });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({
       status: "Error",
       error: error.message,
+      auth: false,
     });
   }
 };
@@ -71,10 +95,21 @@ export const loginUser = async (req, res) => {
 //?  Permet de récupérer un json avec tout les user dans la bdd.
 export const getAllUser = async (req, res) => {
   try {
-    const { username } = req.query;
+    let usersFind = await userModel.find({});
+
+    const users = [];
+
+    usersFind.forEach((elem) => {
+      resTab.push({
+        username: elem.username,
+        password: elem.password,
+        mail: res.mail,
+      });
+    });
 
     res.status(201).json({
       status: "Success",
+      users: users,
     });
   } catch (error) {
     console.log(error.message);
@@ -89,7 +124,22 @@ export const getAllUser = async (req, res) => {
 //?  Permet de modifier des propriétées d'un user dans la bdd.
 export const patchUser = async (req, res) => {
   try {
-    const { userData } = req.body;
+    const { newUserData, userData } = req.body;
+
+    //si psw alors on le hash
+    if (newUserData.password !== undefined) {
+      console.log(newUserData.password);
+      const salt = process.env.SALT;
+      newUserData.password = await hasher(newUserData.password, salt);
+      console.log(newUserData.password);
+    }
+
+    //update de l'user avec nouvelles données
+    const doc = await userModel.findOneAndUpdate(
+      { username: userData.username, mail: userData.mail },
+      data, //update
+      { new: true }
+    );
 
     res.status(201).json({
       status: "Success",
@@ -108,6 +158,10 @@ export const patchUser = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { username } = req.query;
+
+    const operationReturn = await userModel.deleteOne({
+      username: username,
+    });
 
     res.status(201).json({
       status: "Success",
