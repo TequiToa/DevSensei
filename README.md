@@ -1,2 +1,2 @@
 # DevSensei
-C'est un site ou on peut faire des cours avec un qcm 🎉 ! !
+C'est un site qui permet de faire des cours avec un QCM 🎉 ! !
