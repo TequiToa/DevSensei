@@ -28,4 +28,5 @@ const connectionMongo = async () => {
 };
 
 connectionMongo();
+
 app.listen(PORT, () => console.log(`Server running on port : ${PORT}`));

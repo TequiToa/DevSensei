@@ -1,5 +1,5 @@
 import userModel from "../models/userModel.js";
-import { hashage } from "../Utils/hash.js";
+import { hashage } from "../utils/hash.js";
 
 export const test = async () => {
   const newUser = new userModel({
@@ -36,10 +36,11 @@ export const registerUser = async (req, res) => {
     const mdp = hashage(userData.password, process.env.SALT);
 
     //user
-    const newUser = { ...userData, password: mdp };
+    const newUser = new userModel({ ...userData, password: mdp });
 
     //Ajout a la bdd
     const creation = await newUser.save();
+    console.log(creation);
 
     res.status(201).json({
       status: "Success",
